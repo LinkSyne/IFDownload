@@ -1,0 +1,26 @@
+name: Link Check
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check archive.org links
+        run: |
+          failed=0
+          jq -r '.[].path' manifest/vmware.json | while read p; do
+            url="https://archive.org/download/vmwareworkstationarchive/$p"
+            code=$(curl -s -o /dev/null -w "%{http_code}" --head --max-time 15 "$url")
+            if [ "$code" = "200" ] || [ "$code" = "302" ]; then
+              echo "OK   $code $p"
+            else
+              echo "FAIL $code $p"
+              failed=1
+            fi
+          done
+          exit $failed
